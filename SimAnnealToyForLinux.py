@@ -1,8 +1,9 @@
-#!/home/will/anaconda3/bin/python
+#!/usr/bin/env python
 # Uses python 3.4
 from City import City
 import random
 import math
+import matplotlib.pyplot as plt
 __author__ = "will"
 
 
@@ -38,9 +39,12 @@ def two_opt_swap(tour, i, k):
 def get_perturbed_path(tour):
     number_of_cities_in_a_tour = len(tour)
     i = random.randint(1, number_of_cities_in_a_tour - 2)
-    k = random.randint(1, number_of_cities_in_a_tour - 2)
+    k = random.randint(1, number_of_cities_in_a_tour - 1)# was -2
+    if i == number_of_cities_in_a_tour:
+        i -= 1
+
     if i == k:
-        k -= 1
+        k += 1
     elif k < i:
         temp = i
         i = k
@@ -60,8 +64,20 @@ def get_simple_perturbed_path(tour):
     perturbed_tour_to_return[pos2] = temp
     return perturbed_tour_to_return
 
+
+def two_in_a_row(tour):
+    for i in range(0, len(tour) - 1):
+        if tour[i] == tour[i+1]:
+            return i, i+1
+    return None
+
+"""
+###---Program Start---###
+"""
+
 cities_list = []
 f = open("cities.txt", "r")
+cost_over_time = []
 
 for row in f:
     comps = row.rstrip("\n")
@@ -72,33 +88,45 @@ for row in f:
 
 f.close()
 
-best_tour = cities_list[:30]
+best_tour = cities_list[:]
 best_tour.append(cities_list[0])  # makes a full tour
 current_tour = best_tour[:]
 cities_in_a_tour = len(current_tour)
-temperature = 1000.0
-cooling_rate = 0.9999
-while temperature > 10:
+temperature = 100.0
+cooling_rate = 0.99999
+while temperature > .5:
     # must perturb the current_tour
-    perturbed_tour = get_perturbed_path(current_tour)
+    new_tour = get_perturbed_path(current_tour)
 
-    perturbed_tour_len = tour_length(perturbed_tour)
+    new_tour_len = tour_length(new_tour)
     current_tour_len = tour_length(current_tour)
-    if perturbed_tour_len < current_tour_len:
-        current_tour = perturbed_tour
-    else:
-        x = random.random()
-        p = math.exp(float(current_tour_len - perturbed_tour_len) / temperature)
-        if p > x:
-            current_tour = perturbed_tour
+
+    diff = new_tour_len - current_tour_len
+
+    if diff < 0 or math.exp(-diff / temperature) > random.random():
+        current_tour = new_tour
+
+    res = two_in_a_row(current_tour)
+    if two_in_a_row(current_tour) is not None:
+        print("indices: ", res)
+        break
 
     if tour_length(current_tour) < tour_length(best_tour):
         best_tour = current_tour
 
     temperature *= cooling_rate
+    cost_over_time.append(tour_length(current_tour))
     print(temperature)
 
+print("Cities:")
 for city in best_tour:
     print(city)
+print("cost of best tour: " + str(tour_length(best_tour)))
+print("cost of current tour: " + str(tour_length(current_tour)))
+
+plt.plot(cost_over_time)
+plt.xlabel("Iterations")
+plt.ylabel("Cost")
+plt.show()
 
 
